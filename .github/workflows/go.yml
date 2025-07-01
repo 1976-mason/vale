@@ -1,0 +1,66 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20'
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
+# copilot_link.py
+
+import os
+import subprocess
+from github import Github  # from PyGithub
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+g = Github("your_personal_access_token_here")  # 🔐 Replace securely
+
+@app.route("/create_repo", methods=["POST"])
+def create_repo():
+    data = request.json
+    name = data["name"]
+    try:
+        user = g.get_user()
+        repo = user.create_repo(name)
+        return jsonify({"message": f"Repo '{name}' created", "url": repo.clone_url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/push_code", methods=["POST"])
+def push_code():
+    path = request.json["path"]
+    try:
+        os.chdir(path)
+        subprocess.run(["git", "init"])
+        subprocess.run(["git", "add", "."])
+        subprocess.run(["git", "commit", "-m", "Automated push"])
+        subprocess.run(["git", "remote", "add", "origin", f"https://github.com/youruser/{os.path.basename(path)}.git"])
+        subprocess.run(["git", "branch", "-M", "main"])
+        subprocess.run(["git", "push", "-u", "origin", "main"])
+        return jsonify({"message": "Code pushed!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(port=5005)
